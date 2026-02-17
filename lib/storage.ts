@@ -1,57 +1,38 @@
-import fs from "fs";
-import path from "path";
+// NOTE:
+// In-memory storage used because Vercel serverless
+// does not support persistent filesystem writes.
+// For production, replace with database (e.g. Supabase, Neon, Vercel KV).
+
 import { Brief } from "./types";
 
-const BRIEFS_FILE = path.join(process.cwd(), ".data", "briefs.json");
+// In-memory storage (resets on each serverless function cold start)
+let briefs: Brief[] = [];
 
 /**
- * Ensure the .data directory exists
- */
-function ensureDataDir() {
-  const dataDir = path.dirname(BRIEFS_FILE);
-  if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
-  }
-}
-
-/**
- * Load all briefs from disk
+ * Load all briefs from in-memory storage
  */
 export function loadBriefs(): Brief[] {
-  ensureDataDir();
-  if (!fs.existsSync(BRIEFS_FILE)) {
-    return [];
-  }
-  try {
-    const data = fs.readFileSync(BRIEFS_FILE, "utf-8");
-    return JSON.parse(data) as Brief[];
-  } catch {
-    return [];
-  }
+  return briefs;
 }
 
 /**
- * Save briefs to disk
+ * Save briefs to in-memory storage
  */
-export function saveBriefs(briefs: Brief[]): void {
-  ensureDataDir();
-  fs.writeFileSync(BRIEFS_FILE, JSON.stringify(briefs, null, 2), "utf-8");
+export function saveBriefs(newBriefs: Brief[]): void {
+  briefs = newBriefs;
 }
 
 /**
  * Add a brief to storage
  */
 export function addBrief(brief: Brief): void {
-  const briefs = loadBriefs();
   briefs.push(brief);
-  saveBriefs(briefs);
 }
 
 /**
  * Retrieve a brief by ID
  */
 export function getBriefById(id: string): Brief | null {
-  const briefs = loadBriefs();
   return briefs.find((b) => b.id === id) || null;
 }
 
@@ -59,7 +40,6 @@ export function getBriefById(id: string): Brief | null {
  * Get the last N briefs
  */
 export function getRecentBriefs(count: number = 5): Brief[] {
-  const briefs = loadBriefs();
   return briefs.slice(-count).reverse();
 }
 
@@ -67,11 +47,9 @@ export function getRecentBriefs(count: number = 5): Brief[] {
  * Mark a brief as saved (add saved_at timestamp if not already present)
  */
 export function markBriefAsSaved(id: string): void {
-  const briefs = loadBriefs();
   const brief = briefs.find((b) => b.id === id);
   if (brief && !brief.saved_at) {
     brief.saved_at = new Date().toISOString();
-    saveBriefs(briefs);
   }
 }
 
@@ -80,16 +58,14 @@ export function markBriefAsSaved(id: string): void {
  */
 export function checkDatabase(): { status: "ok" | "error"; message: string } {
   try {
-    ensureDataDir();
-    const testBriefs = loadBriefs();
     return {
       status: "ok",
-      message: `Database OK. ${testBriefs.length} briefs stored.`,
+      message: `In-memory storage OK. ${briefs.length} briefs stored.`,
     };
   } catch (e) {
     return {
       status: "error",
-      message: `Database error: ${String(e)}`,
+      message: `Storage error: ${String(e)}`,
     };
   }
 }

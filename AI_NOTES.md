@@ -45,8 +45,8 @@ This project was developed with assistance from **GitHub Copilot** and **Claude 
 ### Functionality Testing
 ✅ **URL Validation**: Tested with valid/invalid URLs, empty input, and edge cases  
 ✅ **Brief Generation**: Verified mock data matches Zod schema structure  
-✅ **Persistence**: Confirmed briefs save to `.data/briefs.json` and survive server restarts  
-✅ **Status Page**: Tested health checks for backend, database, and LLM status  
+✅ **Persistence**: In-memory storage (serverless-compatible, resets on cold start)  
+✅ **Status Page**: Tested health checks for backend, storage, and LLM status  
 ✅ **Responsive Design**: Manually tested on mobile (375px), tablet (768px), and desktop (1440px)  
 ✅ **Accessibility**: Verified keyboard navigation, ARIA labels, and screen reader compatibility  
 
@@ -88,7 +88,7 @@ This design decision enables rapid iteration on UI/UX without consuming API toke
 
 The following items are documented as TODOs for production deployment:
 
-1. **Database Migration**: Replace file storage with PostgreSQL or MongoDB
+1. **Database Integration**: Replace in-memory storage with Vercel KV, Supabase, or Neon PostgreSQL
 2. **Real OpenAI Integration**: Uncomment and test API calls in `pages/api/generate.ts`
 3. **Error Recovery**: Implement retry logic for failed LLM requests
 4. **Rate Limiting**: Add request throttling for API endpoints

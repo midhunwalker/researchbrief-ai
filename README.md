@@ -11,7 +11,7 @@ This project demonstrates modern full-stack development with TypeScript, server-
 ### Core Functionality
 - **URL Input & Validation**: Accept multiple URLs with HTTP/HTTPS validation
 - **Research Brief Generation**: Create structured briefs with summary, key points, conflicts, verification items, and sources
-- **Local Persistence**: Save and retrieve briefs using file-based storage (`.data/briefs.json`)
+- **In-Memory Storage**: Save and retrieve briefs using in-memory storage (serverless-compatible)
 - **Recent Briefs**: Display last 5 saved briefs on homepage
 - **Brief Detail View**: Full brief display with all sections and interactive elements
 - **Status Dashboard**: Monitor backend, database, and LLM health with auto-refresh
@@ -130,7 +130,7 @@ Add in project settings:
 ✅ **Save Functionality**: PUT `/api/briefs` to mark briefs as saved  
 ✅ **Recent Briefs**: GET `/api/briefs` returns last 5 saved briefs  
 ✅ **Status Page**: GET `/api/status` checks backend/database/LLM health  
-✅ **Persistence**: File-based storage in `.data/briefs.json`  
+✅ **Persistence**: In-memory storage (serverless-compatible, resets on cold start)  
 ✅ **Validation**: Zod schemas for all data structures  
 ✅ **Responsive UI**: Mobile-first design with Tailwind CSS  
 ✅ **Accessibility**: Semantic HTML, ARIA labels, keyboard navigation  
@@ -139,8 +139,9 @@ Add in project settings:
 ## What Is Intentionally Not Implemented
 
 ❌ **Authentication**: No user accounts or login system  
-❌ **Database**: Uses file storage instead of PostgreSQL/MongoDB  
+❌ **Database**: Uses in-memory storage instead of PostgreSQL/MongoDB/Vercel KV  
 ❌ **Real OpenAI API Calls**: Commented out (TODO) in `pages/api/generate.ts`  
+❌ **Persistent Storage**: Briefs reset on serverless function cold starts  
 ❌ **PDF Export**: No export functionality  
 ❌ **Search**: No full-text search across briefs  
 ❌ **Pagination**: Shows only last 5 briefs  
@@ -187,8 +188,6 @@ next-app/
 ├── public/                      # Static assets
 │   ├── logo.svg                # Application logo
 │   └── icons/                  # SVG icons
-├── .data/                       # Local data storage (gitignored)
-│   └── briefs.json             # Persisted briefs
 ├── .env.example                 # Environment template
 ├── .gitignore                   # Git ignore rules
 ├── README.md                    # This file
@@ -286,13 +285,12 @@ pages/api/
   └─ briefs.ts             # CRUD operations for briefs
 lib/
   ├─ types.ts              # TypeScript types & Zod schemas
+  ├─ storage.ts            # In-memory storage (serverless-compatible)
   ├─ api.ts                # Client-side API helpers
   └─ figmaToComponents.md  # Component mapping from Figma
 public/
   ├─ icons/                # Exported SVG icons
   └─ logo.svg
-.data/
-  └─ briefs.json           # Local brief storage (dev only)
 ```
 
 ## Usage
