@@ -73,16 +73,18 @@ This project was developed with assistance from **GitHub Copilot** and **Claude 
 
 **Alternative Considered**: Anthropic Claude (comparable quality, different pricing model)
 
-## Mock Mode Design
+## OpenAI Integration
 
-The application includes a comprehensive mock mode (`lib/mockBrief.ts`) that:
-- Generates realistic research briefs without API calls
-- Matches the exact Zod schema structure
-- Provides consistent data for UI testing
-- Allows development without API keys
-- Serves as documentation for expected output format
+The application integrates with OpenAI's GPT-4 API for real research brief generation:
+- Uses `gpt-4o-mini` model with structured JSON output mode
+- Validates all LLM responses against Zod schemas for type safety
+- Handles API errors, rate limits, and invalid JSON gracefully
+- Requires `OPENAI_API_KEY` environment variable (no mock fallback)
+- Consumes real API tokens on each request (~1,500-3,000 tokens per brief)
+- Uses comprehensive system and user prompts with explicit JSON schema
+- Implements proper error handling with 400/429/500 status codes
 
-This design decision enables rapid iteration on UI/UX without consuming API tokens during development.
+The integration was implemented with production-grade error handling and schema validation to ensure reliability.
 
 ## Areas Requiring Future Attention
 

@@ -275,14 +275,18 @@ const brief = validation.data;
 
 ---
 
-## Mock Mode Fallback
+## API Key Configuration
 
-When `OPENAI_API_KEY` is not set, the application uses `generateMockBrief()` from `lib/mockBrief.ts`. This function:
+The application **requires** `OPENAI_API_KEY` to generate research briefs:
+- If not configured, the API returns a 400 error with setup instructions
+- No mock mode or fallback is provided
+- Real OpenAI tokens are consumed on each generation request
+- Monitor usage at https://platform.openai.com/usage
 
-1. Generates a brief matching the exact schema
-2. Uses provided URLs in sources
-3. Returns deterministic, realistic data
-4. Enables full UI testing without API calls
+**Setup**:
+1. Get API key from https://platform.openai.com/api-keys
+2. Add to `.env.local`: `OPENAI_API_KEY=sk-...`
+3. Restart the development server
 
 ---
 
@@ -418,14 +422,11 @@ const parsed = JSON.parse(response.content);
 const validated = BriefSchema.parse(parsed);
 ```
 
-If validation fails, return 400 error with details.
-
-### Fallback Mock Data
-When no API key is provided, `generateMockBrief()` creates a realistic brief for testing UI/UX.
+If validation fails, return 500 error with validation details.
 
 ## Example Brief Output
 
-See `lib/mockBrief.ts` for a complete example of the expected JSON structure.
+See the "Example Brief Structure" section earlier in this document for the complete JSON structure.
 
 ## Prompt Engineering Notes
 

@@ -2,7 +2,7 @@
 
 ResearchBrief is a Next.js 14 web application that generates structured research briefs from multiple URLs. Users input URLs, and the application produces a comprehensive brief containing a summary, key findings with credibility ratings, conflicting claims, verification checklist, and source citations.
 
-The application supports both real LLM integration (OpenAI) and mock mode for offline development and testing. Users can save briefs locally and view recent briefs. A status dashboard displays backend, database, and LLM health.
+The application supports real LLM integration using OpenAI's GPT-4 API. Users can save briefs locally and view recent briefs. A status dashboard displays backend, database, and LLM health.
 
 This project demonstrates modern full-stack development with TypeScript, server-side API routes, client-side React components, and structured LLM output validation using Zod schemas.
 
@@ -17,7 +17,7 @@ This project demonstrates modern full-stack development with TypeScript, server-
 - **Status Dashboard**: Monitor backend, database, and LLM health with auto-refresh
 
 ### LLM Integration
-- **Mock Mode**: Works without API key using deterministic mock data
+- **Real LLM Integration**: Powered by OpenAI GPT-4 (`gpt-4o-mini` model)
 - **OpenAI Ready**: Structured to integrate OpenAI API with provided key
 - **Schema Validation**: All outputs validated against Zod schemas
 
@@ -85,20 +85,27 @@ npm start
 
 Open http://localhost:3000 in your browser.
 
-## Mock Mode
+## OpenAI Configuration (Required)
 
-The application works fully **without** an OpenAI API key. When `OPENAI_API_KEY` is blank or not set:
+The application **requires** an OpenAI API key to generate research briefs. Real OpenAI tokens are consumed on each request.
 
-1. The `/api/generate` endpoint uses `generateMockBrief()` from `lib/mockBrief.ts`
-2. Mock briefs contain realistic data matching the Zod schema
-3. All UI features work identically (save, view, status)
-4. Perfect for development, testing, and demonstrations
-
-To enable real LLM integration:
+**Setup Steps**:
 1. Get an API key from https://platform.openai.com/api-keys
-2. Add `OPENAI_API_KEY=sk-...` to `.env.local`
-3. Uncomment OpenAI API call in `pages/api/generate.ts`
-4. Restart the server
+2. Add to `.env.local`:
+   ```bash
+   OPENAI_API_KEY=sk-...
+   ```
+3. Restart the development server
+
+**Without API Key**:
+- The `/api/generate` endpoint returns a 400 error
+- Error message includes configuration instructions
+- No mock mode or fallback is provided
+
+**Monitor Usage**:
+- Track token consumption at https://platform.openai.com/usage
+- The application uses the `gpt-4o-mini` model
+- Each brief generation consumes approximately 1,500-3,000 tokens
 
 ## How to Deploy (Vercel)
 
@@ -182,8 +189,7 @@ next-app/
 │   └── status.ts               # GET: Health checks
 ├── lib/                         # Shared utilities
 │   ├── types.ts                # Zod schemas & TypeScript types
-│   ├── storage.ts              # File persistence functions
-│   ├── mockBrief.ts            # Mock data generator
+│   ├── storage.ts              # In-memory brief storage
 │   └── api.ts                  # Client API helpers
 ├── public/                      # Static assets
 │   ├── logo.svg                # Application logo
