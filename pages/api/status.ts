@@ -4,7 +4,7 @@
  * Health check endpoint that verifies:
  * - Backend is running
  * - Database is accessible
- * - LLM (OpenAI) key is configured
+ * - LLM (Groq) key is configured
  *
  * Response: { backend: Status, database: Status, llm: Status, timestamp: string }
  */
@@ -45,12 +45,12 @@ export default async function handler(
   };
 
   // Check LLM configuration
-  const hasOpenAiKey = !!process.env.OPENAI_API_KEY;
+  const hasGroqKey = !!process.env.GROQ_API_KEY;
   const llm: HealthCheck = {
-    status: hasOpenAiKey ? "ok" : "warning",
-    message: hasOpenAiKey
-      ? "OpenAI API configured"
-      : "Using mock data (no OPENAI_API_KEY set)",
+    status: hasGroqKey ? "ok" : "warning",
+    message: hasGroqKey
+      ? "Groq API configured"
+      : "No GROQ_API_KEY set - LLM features unavailable",
     checked_at: now,
   };
 

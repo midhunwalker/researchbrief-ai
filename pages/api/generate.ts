@@ -1,14 +1,14 @@
 /**
  * API route: POST /api/generate
  *
- * Generates a research brief from URLs using OpenAI GPT-4 API.
+ * Generates a research brief from URLs using Groq API (Llama 3 70B).
  * 
- * IMPORTANT: Requires OPENAI_API_KEY environment variable.
- * Real OpenAI tokens will be consumed on each request.
+ * IMPORTANT: Requires GROQ_API_KEY environment variable.
+ * Real Groq tokens will be consumed on each request.
  * 
  * To configure:
- * 1. Get API key from https://platform.openai.com/api-keys
- * 2. Add to .env.local: OPENAI_API_KEY=sk-...
+ * 1. Get API key from https://console.groq.com/keys
+ * 2. Add to .env.local: GROQ_API_KEY=gsk-...
  * 3. Restart server
  *
  * Request: { urls: string[] }
@@ -16,10 +16,43 @@
  */
 
 import type { NextApiRequest, NextApiResponse } from "next";
-import OpenAI from "openai";
 import { GenerateRequestSchema, BriefSchema } from "@/lib/types";
 import { addBrief } from "@/lib/storage";
-import { randomUUID } from "crypto";
+
+interface GroqMessage {
+  role: "system" | "user" | "assistant";
+  content: string;
+}
+
+interface GroqRequest {
+  model: string;
+  messages: GroqMessage[];
+  temperature: number;
+  max_tokens: number;
+  response_format?: { type: "json_object" };
+}
+
+interface GroqChoice {
+  message: {
+    content: string;
+    role: string;
+  };
+  finish_reason: string;
+}
+
+interface GroqResponse {
+  choices: GroqChoice[];
+  id: string;
+  model: string;
+}
+
+interface GroqErrorResponse {
+  error: {
+    message: string;
+    type: string;
+    code?: string;
+  };
+}
 
 export default async function handler(
   req: NextApiRequest,
@@ -41,19 +74,14 @@ export default async function handler(
 
     const { urls } = validation.data;
 
-    // Check if OpenAI API key is configured
-    const openaiKey = process.env.OPENAI_API_KEY;
-    if (!openaiKey) {
+    // Check if Groq API key is configured
+    const groqKey = process.env.GROQ_API_KEY;
+    if (!groqKey) {
       return res.status(400).json({
         error: "LLM not configured",
-        message: "OPENAI_API_KEY environment variable is not set. Add your OpenAI API key to .env.local to enable brief generation.",
+        message: "GROQ_API_KEY environment variable is not set. Add your Groq API key to .env.local to enable brief generation.",
       });
     }
-
-    // Initialize OpenAI client
-    const openai = new OpenAI({
-      apiKey: openaiKey,
-    });
 
     // System prompt defining the assistant's role
     const systemPrompt = `You are an expert research analyst specializing in synthesizing information from multiple sources.
@@ -141,20 +169,51 @@ Rules:
 - All IDs must be unique UUID v4 format
 - created_at must be ISO 8601 format`;
 
-    // Call OpenAI API with structured output
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+    // Prepare Groq API request
+    const groqRequest: GroqRequest = {
+      model: "llama3-70b-8192",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ],
-      response_format: { type: "json_object" },
       temperature: 0.7,
-      max_tokens: 3000,
+      max_tokens: 8000,
+      response_format: { type: "json_object" },
+    };
+
+    // Call Groq API
+    const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${groqKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(groqRequest),
     });
 
+    if (!groqResponse.ok) {
+      const errorData = (await groqResponse.json()) as GroqErrorResponse;
+      
+      // Handle rate limit errors
+      if (groqResponse.status === 429) {
+        return res.status(429).json({
+          error: "Rate limit exceeded",
+          message: "Too many requests. Please try again later.",
+        });
+      }
+
+      // Handle other API errors
+      return res.status(groqResponse.status).json({
+        error: "Groq API error",
+        message: errorData.error?.message || "Unknown API error",
+        type: errorData.error?.type,
+      });
+    }
+
+    const groqData = (await groqResponse.json()) as GroqResponse;
+
     // Extract response content
-    const responseContent = completion.choices[0]?.message?.content;
+    const responseContent = groqData.choices[0]?.message?.content;
     if (!responseContent) {
       return res.status(500).json({
         error: "LLM returned empty response",
@@ -166,7 +225,6 @@ Rules:
     try {
       parsedBrief = JSON.parse(responseContent);
     } catch (parseError) {
-      console.error("Failed to parse LLM response:", parseError);
       return res.status(500).json({
         error: "LLM returned invalid JSON",
         details: parseError instanceof Error ? parseError.message : "Unknown parse error",
@@ -176,11 +234,9 @@ Rules:
     // Validate against Zod schema
     const briefValidation = BriefSchema.safeParse(parsedBrief);
     if (!briefValidation.success) {
-      console.error("LLM output failed schema validation:", briefValidation.error);
       return res.status(500).json({
         error: "Brief generation failed schema validation",
         details: briefValidation.error.errors,
-        llmResponse: parsedBrief,
       });
     }
 
@@ -194,28 +250,18 @@ Rules:
       brief,
     });
   } catch (error) {
-    console.error("Error generating brief:", error);
-
-    // Handle OpenAI-specific errors
-    if (error instanceof OpenAI.APIError) {
-      return res.status(error.status || 500).json({
-        error: "OpenAI API error",
-        message: error.message,
-        type: error.type,
-      });
-    }
-
-    // Handle rate limit errors
-    if (error instanceof Error && error.message.includes("rate limit")) {
-      return res.status(429).json({
-        error: "Rate limit exceeded",
-        message: "Too many requests. Please try again later.",
+    // Handle fetch errors
+    if (error instanceof TypeError && error.message.includes("fetch")) {
+      return res.status(500).json({
+        error: "Network error",
+        message: "Failed to connect to Groq API",
       });
     }
 
     // Generic error handler
     return res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: "Internal server error",
+      message: error instanceof Error ? error.message : "Unknown error occurred",
     });
   }
 }
